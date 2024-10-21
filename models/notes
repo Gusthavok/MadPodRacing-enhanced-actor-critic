@@ -1,0 +1,13 @@
+In each critic there are the architecutre and the trained models are in the safetensor directory.
+
+The name of a safetensors file is explicit for the observation taken. 
+
+## Actor Models
+Input : observations
+Output : action
+Optimizer : Maximize the output of the critic model
+
+## Critic Models
+Input : both the observations and the actor action
+Output : one float (evaluates the Q function)
+Optimizer : minimize the loss between  output and Q approximation (environment reward + Gamma*Critic(Actor(next_state), next_state))

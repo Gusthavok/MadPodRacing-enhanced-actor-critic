@@ -1,0 +1,28 @@
+function : get_observation
+
+grossièremement : 
+des x, des y, des vx, des vy normalisé !
+-> combinaison linéaire relued
+-> calcul pour chacun des vecteurs sortant angle, norme
+-> pour les angles : relued avec les angles des orientations des pods into cos, sin
+-> MLP avec normes, angles et inputs supplémentaires
+
+Précisément : 
+POSITIONS : 
+5 (x,y) : 5 prochains CP hero + apprentissage de la représentation de l'absence de prochain vecteurs
+5 (x,y) : 5 prochains CP adv + apprentissage de la représentation de l'absence de prochain vecteurs
+
+4 (x,y) : positions des pods
+
+ANGLES : 
+Orientation des 4 Pods
+ (angle venant des x, y)
+
+MLP FINAL :
+
+Disposition du Boost hero + adversaire
+Nombre de CP restants hero + adversaire
+Nombre de ticks encore sous innactivité suite au shield de chaque pods
+Nombre de ticks depuis dernier cp, hero + adversaire
+ (distances)
+ (cos, sin de angles)
