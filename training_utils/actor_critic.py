@@ -104,7 +104,7 @@ def select_action(state, actor_net, choose_random_action, device, eps_threshold)
         with torch.no_grad():
             return actor_net(state).squeeze()
     else:
-        return torch.tensor(choose_random_action(), device=device, dtype=torch.long)
+        return torch.tensor(choose_random_action(state), device=device, dtype=torch.long)
     
 def soft_update(policy_net, target_net, TAU=0.005):
     # Soft update of the target network's weights

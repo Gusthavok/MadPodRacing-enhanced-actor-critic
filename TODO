@@ -1,7 +1,8 @@
 Predictor : 
-    - Rajouter en input la métadonnée "utilisation du boost"
-    - Créer un système d'entrainemenent à partir d'un dataset déjà constitué. 
-    - Créer un dataset général et un spécial collision (voir un spécial collisions avec shield). 
 
 samplpe_action : 
     - dépend de l'environement
+
+main_training : 
+    - trier la mémoire pendant l'entrainement (si critic(next_state) et critic(predictor(state,action,action)) sont trop différents, on n'utilise pas ce batch d'entrainement + on réentraine le predictor sur ces événements)
+    - faire plusieurs memory : pour les événements dur de predictor, pour train l'actor, et pour le critic (on n'entraine le critic que si il s'agit d'une action de choisie par l'actor et non une action random)
