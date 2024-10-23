@@ -65,14 +65,17 @@ class Etat_de_jeu:
             self.memoire.append(l)
 
         self.premier_tour = False
-    
-        return self.get_observation(indice = 0), self.get_observation(indice = 2), (fin(self.pods) or self.tick>parametre.nombre_de_tick_max)
+
+        infos_supplementaires = {"impact": rebond_fratricide or rebond_ennemi}
+        return self.get_observation(indice = 0), self.get_observation(indice = 2), (fin(self.pods) or self.tick>parametre.nombre_de_tick_max), infos_supplementaires
         # version 1 : 
         # return (self.get_observation(indice = 0), self.get_observation(indice = 1)), (self.get_observation(indice = 2), self.get_observation(indice = 3)), self.get_reward_atq(rebond_fratricide), self.get_reward_dfs(rebond_fratricide, rebond_ennemi), (fin(self.pods) or self.tick>parametre.nombre_de_tick_max)
 
     def get_n_cp(self, joueur = 0):
         return len(self.carte_cp)* self.memoire[-1][joueur][0] + self.memoire[-1][joueur][1] -1
 
+    def get_distance_cp(self, indice_cp1, indice_cp2):
+        return sqrt((self.carte_cp[indice_cp2][0] - self.carte_cp[indice_cp1][0])**2 + (self.carte_cp[indice_cp2][0] - self.carte_cp[indice_cp1][0])**2)
 # A MODIF
     def get_observation(self, indice):
         if indice ==0:
@@ -107,7 +110,6 @@ class Etat_de_jeu:
 
         bit_fin, pod_j1_a, pod_j1_b, pod_j2_a, pod_j2_b, boost_j1, boost_j2 = self.pods
 
-
         for ind_pod in order_pods:
             if ind_pod == 0:
                 l_autre.append(float(boost_j1))
@@ -121,8 +123,27 @@ class Etat_de_jeu:
         for ind_pod in order_pods:
             l_autre.append(self.memoire[-1][ind_pod][8])
         
+        ecart_adverse = self.ecart_pods(order_pods[0], order_pods[2])
+        return l_objet_physiques + l_objet_non_physiques + l_autre  + [ecart_adverse] # l_objet_non_physiques : 20, l_objet_physiques : 24,  l_autre :  10, ecart_adv:1
+
+    def ecart_pods(self, indice_pod_1, indice_pod_2):
+        nombre_cp=len(self.carte_cp)
         
-        return l_objet_physiques + l_objet_non_physiques + l_autre # l_objet_physiques : 24, l_objet_non_physiques : 20, l_autre : 10
+        indice_cp_1 = nombre_cp*self.memoire[-1][indice_pod_1][0] +self.memoire[-1][indice_pod_1][1]
+        indice_cp_2 = nombre_cp*self.memoire[-1][indice_pod_2][0] +self.memoire[-1][indice_pod_2][1]
+        
+        if indice_cp_1>= indice_cp_2:
+            
+            distance = 0
+            for k in range(indice_cp_2, indice_cp_1):
+                distance += self.get_distance_cp(k%nombre_cp, (k+1)%nombre_cp)
+            # distance du pod 2 à son cp
+            distance += sqrt((self.memoire[-1][indice_pod_2][2] - self.carte_cp[indice_cp_2][0])**2 + (self.memoire[-1][indice_pod_2][3] - self.carte_cp[indice_cp_2][1])**2)
+            # distance du pod 1 à son cp
+            distance -= sqrt((self.memoire[-1][indice_pod_1][2] - self.carte_cp[indice_cp_1][0])**2 + (self.memoire[-1][indice_pod_1][3] - self.carte_cp[indice_cp_1][1])**2)
+            return distance/Facteur_compression_distances
+        else:
+            return - self.ecart_pods(indice_pod_2, indice_pod_1)
 
     def afficher(self):
         exemple = self.memoire

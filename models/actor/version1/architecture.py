@@ -9,7 +9,7 @@ class Actor(nn.Module):
         super(Actor, self).__init__()
     
 
-        self.first_layer = nn.Linear(54, hidden_dimension) # 54 informations de l'environnement
+        self.first_layer = nn.Linear(55, hidden_dimension) # 55 informations de l'environnement
         
         self.hidden_layers = nn.ModuleList([nn.Linear(hidden_dimension, hidden_dimension) for _ in range(1)])
 

@@ -39,9 +39,9 @@ def transform_output(action):
 def step(action_hero, action_adversaire):
     global jeu
     
-    observation_hero, observation_adversaire, terminated = jeu.etape_de_jeu(transform_output(action_hero), transform_output(action_adversaire))
+    observation_hero, observation_adversaire, terminated, infos_supplementaires = jeu.etape_de_jeu(transform_output(action_hero), transform_output(action_adversaire))
 
-    return observation_hero, observation_adversaire, terminated, False
+    return observation_hero, observation_adversaire, terminated, infos_supplementaires
 
 def get_cp():
     global carte_cp, score_adv

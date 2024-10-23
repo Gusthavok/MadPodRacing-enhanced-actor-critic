@@ -3,3 +3,5 @@ Predictor :
     - Créer un système d'entrainemenent à partir d'un dataset déjà constitué. 
     - Créer un dataset général et un spécial collision (voir un spécial collisions avec shield). 
 
+samplpe_action : 
+    - dépend de l'environement

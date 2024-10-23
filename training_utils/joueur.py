@@ -1,8 +1,8 @@
 import torch
 
 class Model:
-    def __init__(self, model_version, classe, save_name, reload_name, n_observations, n_actions, type_model, device):
-        self.net = classe(n_observations, n_actions).to(device)
+    def __init__(self, model_version, classe, save_name, reload_name, type_model, device):
+        self.net = classe().to(device)
         if reload_name != '':
             self.net.load_state_dict(torch.load(f'./models/{type_model}/{model_version}/safetensor/{reload_name}', map_location=device))
         self.version = model_version

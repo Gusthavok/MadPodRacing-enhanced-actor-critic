@@ -7,14 +7,12 @@ import torch.optim as optim
 import environment as env
 
 from training_utils.joueur import Joueur, Model
-from training_utils.actor_critic import ReplayMemory, select_action, optimize, optimize_actor, soft_update
+from training_utils.actor_critic import ReplayMemory, select_action, optimize_predictor, optimize_critic, optimize_actor, soft_update
 from training_utils.graph_train import plot_on_4_diagrams
 from training_utils.learning_parameters import *
-from models.actor.version1.architecture import Actor_v1
-from models.critic.version1.architecture import Critic_v1
-from models.actor.version2.architecture import Actor_v2
-from models.critic.version2.architecture import Critic_v2
-
+from models.actor.version1.architecture import Actor
+from models.critic.version1.architecture import Critic
+from models.predictor.version1.architecture import Predictor
 from environment.action_space import sample_action
 
 def gamma(steps):
@@ -67,54 +65,38 @@ def plot_infos(score_hero, score_adv, l_loss_actor, l_loss_critic, gamma_value, 
 
     plot_on_4_diagrams(dict11, dict12, dict21, dict22)
 
+def hard_critic(env):
+    return 0
 
 def main():
     plt.ion()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    n_actions = env.action_space.n
-    n_observations = 40
 
-    hero_actor_classe = Actor_v2
-    hero_actor_model_version = 'version2'
-    hero_actor_save_name = 'gen1'
-    hero_actor_reload_name = 'gen0_okayy'
+    hero_actor_classe = Actor
+    hero_actor_model_version = 'version1'
+    hero_actor_save_name = 'gen_1'
+    hero_actor_reload_name = ''
 
-    hero_critic_classe = Critic_v2
-    hero_critic_model_version = 'version2'
-    hero_critic_save_name = 'gen1'
-    hero_critic_reload_name = 'gen0_okayy'
+    hero_critic_classe = Critic
+    hero_critic_model_version = 'version1'
+    hero_critic_save_name = 'gen_1'
+    hero_critic_reload_name = ''
+    
+    actor = Model(hero_actor_model_version, hero_actor_classe, hero_actor_save_name, hero_actor_reload_name, 'actor', device)
+    critic = Model(hero_critic_model_version, hero_critic_classe, hero_critic_save_name, hero_critic_reload_name, 'critic', device) 
+    critic_smooth = Model(hero_critic_model_version, hero_critic_classe, hero_critic_save_name, hero_critic_reload_name, 'critic', device)   
 
+    predictor_net = Predictor()
+    predictor_net.load_state_dict(torch.load('./models/Predictor/version1/safetensor/test', map_location=device))
 
-    is_adversaire = True
+    hero = Joueur(actor, critic, critic_smooth, eval_mode = False)
 
-    adv_actor_classe = Actor_v1
-    adv_actor_model_version = 'version1'
-    adv_actor_save_name = 'test'
-    adv_actor_reload_name = 'gen4'
-
-    adv_critic_classe = Critic_v1
-    adv_critic_model_version = 'version1'
-    adv_critic_save_name = 'test'
-    adv_critic_reload_name = 'gen4'
-
-
-    hero = Joueur(
-        Model(hero_actor_model_version, hero_actor_classe, hero_actor_save_name, hero_actor_reload_name, n_observations, n_actions, 'actor', device), 
-        Model(hero_critic_model_version, hero_critic_classe, hero_critic_save_name, hero_critic_reload_name, n_observations, n_actions, 'critic', device),     
-        Model(hero_critic_model_version, hero_critic_classe, hero_critic_save_name, hero_critic_reload_name, n_observations, n_actions, 'critic', device),     
-    )
-
-    adv = Joueur(
-        Model(adv_actor_model_version, adv_actor_classe, adv_actor_save_name, adv_actor_reload_name, n_observations, n_actions, 'actor', device), 
-        Model(adv_critic_model_version, adv_critic_classe, adv_critic_save_name, adv_critic_reload_name, n_observations, n_actions, 'critic', device),
-        Model(adv_critic_model_version, adv_critic_classe, adv_critic_save_name, adv_critic_reload_name, n_observations, n_actions, 'critic', device),
-        eval_mode = True  
-    )
-
+    adv = Joueur(actor, critic, critic_smooth, eval_mode = False)
 
     optimizer_actor = optim.AdamW(hero.actor.net.parameters(), lr=LR_ACTOR, amsgrad=True)
     optimizer_critic = optim.AdamW(hero.critic.net.parameters(), lr=LR_CRITIC, amsgrad=True)
+    optimizer_predictor = optim.AdamW(predictor_net.parameters(), lr=1e-4, amsgrad=True)
     memory = ReplayMemory(24000)
 
 
@@ -129,8 +111,9 @@ def main():
 
     for i_episode in range(num_episodes):
 
-        observation_hero, observation_adversaire, info = env.reset()
+        observation_hero, observation_adversaire, _ = env.reset()
 
+        # print(observation_hero)
         state_hero = torch.tensor(observation_hero, dtype=torch.float32, device=device).unsqueeze(0)
         state_adversaire = torch.tensor(observation_adversaire, dtype=torch.float32, device=device).unsqueeze(0)
 
@@ -140,38 +123,35 @@ def main():
             t+=1
 
             action_hero = select_action(state_hero, hero.actor.net, sample_action, device, epsilon(steps_done))
+            action_adv = select_action(state_adversaire, adv.actor.net, sample_action, device, epsilon(steps_done))
             steps_done += 1
 
-            if is_adversaire:
-                action_adv = adv.action(state_adversaire)
-            else:
-                action_adv = torch.tensor(sample_action())
 
-
-            observation_hero, observation_adversaire, reward, terminated, _ = env.step(action_hero, action_adv)
+            observation_hero, observation_adversaire, terminated, info_supplementaires = env.step(action_hero, action_adv)
             action_hero = action_hero.unsqueeze(0)
             action_adv = action_adv.unsqueeze(0)
             
-            reward = torch.tensor([reward], device=device)
 
-            if terminated:
-                next_state_hero = None
+            next_state_hero = torch.tensor(observation_hero, dtype=torch.float32, device=device).unsqueeze(0)
+            next_state_adversaire = torch.tensor(observation_adversaire, dtype=torch.float32, device=device).unsqueeze(0)
 
-            else:
-                next_state_hero = torch.tensor(observation_hero, dtype=torch.float32, device=device).unsqueeze(0)
-                state_adversaire = torch.tensor(observation_adversaire, dtype=torch.float32, device=device).unsqueeze(0)
-
-            memory.push(state_hero, action_hero, next_state_hero, reward)
+            memory.push(state_hero, action_hero, action_adv, next_state_hero, next_state_hero[:, -1])
+            memory.push(state_adversaire, action_adv, action_hero, next_state_adversaire, next_state_adversaire[:, -1])
 
             state_hero = next_state_hero
+            state_adversaire = next_state_adversaire
 
-            l_a, l_c = optimize(memory, hero.actor.net, hero.critic.net, hero.critic_smooth.net, optimizer_actor, optimizer_critic, device, gamma(steps_done), BATCH_SIZE)
+            l_a = optimize_actor(memory, hero.actor.net, hero.critic.net, optimizer_actor, predictor_net, BATCH_SIZE)
+            l_c = optimize_critic(memory, hero.critic.net, hero.critic_smooth.net, optimizer_critic, gamma(steps_done), BATCH_SIZE)
             soft_update(hero.critic.net, hero.critic_smooth.net)
             
             loss_actor+=l_a
             loss_critic+=l_c
 
             if terminated:
+                
+                for _ in range(5):
+                    optimize_predictor(memory, predictor_net, optimizer_predictor, BATCH_SIZE=512)
                 loss_actor = float(torch.tensor(loss_actor).to('cpu'))
                 loss_critic = float(torch.tensor(loss_critic).to('cpu'))
 
