@@ -6,7 +6,7 @@ from collections import namedtuple, deque
 from math import exp
 
 Transition = namedtuple('Transition',
-                        ('state', 'action_J1', 'action_J2', 'next_state', 'next_state_value'))
+                        ('state', 'action_J1', 'action_J2', 'next_state', 'state_hard_value'))
 
 class ReplayMemory(object):
     def __init__(self, capacity):
@@ -57,13 +57,13 @@ def optimize_critic(memory, critic_net, critic_smooth_net, optimizer_critic, GAM
 
     state_batch = torch.cat(batch.state)
     next_state_batch = torch.cat(batch.next_state)
-    next_state_hard_critic_batch = torch.cat(batch.next_state_value)
+    next_state_hard_critic_batch = torch.cat(batch.state_hard_value)
 
     state_action_values = critic_net(state_batch)
     expected_state_action_values = GAMMA*critic_smooth_net(next_state_batch).squeeze() + (1-GAMMA)*next_state_hard_critic_batch
     
     criterion = nn.MSELoss()
-    loss_critic = criterion(state_action_values.squeeze(), expected_state_action_values.squeeze())
+    loss_critic = criterion(expected_state_action_values.squeeze(), state_action_values.squeeze())
 
     optimizer_critic.zero_grad()
     loss_critic.backward()

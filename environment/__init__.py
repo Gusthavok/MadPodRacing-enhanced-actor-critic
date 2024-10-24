@@ -20,7 +20,7 @@ def reset(choose_map = -1):
     return observation_hero, observation_adversaire, False
 
 def transform_output_1_pod(x, y, pow, shield, boost):
-    puissance = max(0, min(1, 1.2*Facteur_compression_puissance*pow -10))
+    puissance = max(0, min(100, 1.2*Facteur_compression_puissance*pow -10))
     
     if shield >.95:
         puissance = "SHIELD"

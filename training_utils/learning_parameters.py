@@ -10,7 +10,7 @@
 BATCH_SIZE = 2048
 
 # Fonction Q = Score(t) + Q(t-1)
-GAMMA_START = 0.95
+GAMMA_START = 0.0
 GAMMA_END = 0.95
 GAMMA_OFFSET = 20000
 GAMMA_TEMPS = 120000 # Au bout de n+GAMMA_OFFSET événements, on serra a GAMMA_START + (GAMMA_END - GAMMA_START)*(n/GAMMA_TEMPS)
@@ -25,6 +25,6 @@ EPS_DECAY = 40000
 TAU = 0.002
 
 # Learning rates
-LR_ACTOR = 1e-5
-LR_CRITIC = 1e-5
+LR_ACTOR = 1e-4
+LR_CRITIC = 1e-4
 

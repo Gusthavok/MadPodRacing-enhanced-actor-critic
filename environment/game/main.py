@@ -124,7 +124,7 @@ class Etat_de_jeu:
             l_autre.append(self.memoire[-1][ind_pod][8])
         
         ecart_adverse = self.ecart_pods(order_pods[0], order_pods[2])
-        return l_objet_physiques + l_objet_non_physiques + l_autre  + [ecart_adverse] # l_objet_non_physiques : 20, l_objet_physiques : 24,  l_autre :  10, ecart_adv:1
+        return l_objet_non_physiques + l_objet_physiques + l_autre  + [ecart_adverse] # l_objet_non_physiques : 20, l_objet_physiques : 24,  l_autre :  10, ecart_adv:1
 
     def ecart_pods(self, indice_pod_1, indice_pod_2):
         nombre_cp=len(self.carte_cp)

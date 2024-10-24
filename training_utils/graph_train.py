@@ -9,13 +9,14 @@ if is_ipython:
 import matplotlib.pyplot as plt
 
 
-def plot_on_4_diagrams(dict11, dict12, dict21, dict22, show_result=False):
+def plot_on_6_diagrams(dict11, dict12, dict21, dict22, dict31, dict32, show_result=False):
     # Crée une figure avec 2x2 subplots
-    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+    fig, axs = plt.subplots(3, 2, figsize=(12, 10))
     
     # Liste des dictionnaires et des sous-graphiques associés
     dicts = [(dict11, axs[0, 0]), (dict12, axs[0, 1]), 
-             (dict21, axs[1, 0]), (dict22, axs[1, 1])]
+             (dict21, axs[1, 0]), (dict22, axs[1, 1]),
+             (dict31, axs[2, 0]), (dict32, axs[2, 1]),]
     
     for d, ax in dicts:
         title = d.pop('titre')  # Récupère et retire le titre du dictionnaire

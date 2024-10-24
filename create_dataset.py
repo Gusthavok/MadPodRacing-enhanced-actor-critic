@@ -49,9 +49,9 @@ def main(max_len_normal, max_len_impact, filename_normal="dataset_normal", filen
 
         while True :
             
-            action_hero = torch.tensor(sample_action())
+            action_hero = torch.tensor(sample_action(state_hero))
 
-            action_adv = torch.tensor(sample_action())
+            action_adv = torch.tensor(sample_action(state_adversaire))
 
 
             observation_hero, observation_adversaire, terminated, infos_supplementaires = env.step(action_hero, action_adv)
