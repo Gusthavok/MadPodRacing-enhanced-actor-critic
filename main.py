@@ -1,13 +1,15 @@
 import matplotlib.pyplot as plt
-from numpy import exp
+from numpy import exp, sqrt, random
 
 import torch
 import torch.optim as optim
 
+from collections import deque
+
 import environment as env
 
 from training_utils.joueur import Joueur, Model
-from training_utils.actor_critic import ReplayMemory, select_action, optimize_predictor, optimize_critic, optimize_actor, soft_update
+from training_utils.actor_critic import ReplayMemory, select_action, optimize_predictor, optimize_critic, optimize_actor, soft_update, Transition
 from training_utils.graph_train import plot_on_6_diagrams
 from training_utils.learning_parameters import *
 from models.actor.version1.architecture import Actor
@@ -68,7 +70,7 @@ def plot_infos(score_hero, score_adv, l_loss_actor, l_loss_critic, gamma_value, 
     
     dict31 = {
         "titre": "Predictor precision ",
-        # "EQM": l_loss_predictor,
+        "EQM": l_loss_predictor,
         # "max_loss": l_max_loss_predictor,
     }
     dict32 = {
@@ -87,20 +89,20 @@ def main():
 
     hero_actor_classe = Actor
     hero_actor_model_version = 'version1'
-    hero_actor_save_name = 'gen_2'
-    hero_actor_reload_name = 'gen_1'
+    hero_actor_save_name = 'gen2-1-64-bis'
+    hero_actor_reload_name = 'gen1-1-64-bis'
 
     hero_critic_classe = Critic
     hero_critic_model_version = 'version1'
-    hero_critic_save_name = 'gen_2'
-    hero_critic_reload_name = 'gen_1'
+    hero_critic_save_name = 'gen_3'
+    hero_critic_reload_name = 'gen_2'
     
     actor = Model(hero_actor_model_version, hero_actor_classe, hero_actor_save_name, hero_actor_reload_name, 'actor', device)
     critic = Model(hero_critic_model_version, hero_critic_classe, hero_critic_save_name, hero_critic_reload_name, 'critic', device) 
     critic_smooth = Model(hero_critic_model_version, hero_critic_classe, hero_critic_save_name, hero_critic_reload_name, 'critic', device)   
 
-    predictor_net = Predictor()
-    predictor_net.load_state_dict(torch.load('./models/Predictor/version1/safetensor/test', map_location=device))
+    predictor_net = Predictor().to(device)
+    predictor_net.load_state_dict(torch.load('./models/predictor/version1/safetensor/test_cuda', map_location=device))
 
     hero = Joueur(actor, critic, critic_smooth, eval_mode = False)
 
@@ -109,8 +111,8 @@ def main():
 
     optimizer_actor = optim.AdamW(hero.actor.net.parameters(), lr=LR_ACTOR, amsgrad=True)
     optimizer_critic = optim.AdamW(hero.critic.net.parameters(), lr=LR_CRITIC, amsgrad=True)
-    optimizer_predictor = optim.AdamW(predictor_net.parameters(), lr=1e-4, amsgrad=True)
-    memory = ReplayMemory(24000)
+    optimizer_predictor = optim.AdamW(predictor_net.parameters(), lr=1e-5, amsgrad=True)
+    memory = ReplayMemory(128*1024)
 
 
     steps_done = 0
@@ -128,6 +130,12 @@ def main():
     hard_critic_value = []
     l_loss_predictor  = []
     l_max_loss_predictor = []
+
+    num_game_before_learning_game = 4 # if =4 :  4 non learning game, then 1 learning
+    learning_circles = 1
+
+    loss_actor_dq, loss_critic_dq, loss_pred_dq= deque([0], maxlen=300), deque([0], maxlen=300), deque([0], maxlen=300)
+
     
     for i_episode in range(num_episodes):
 
@@ -138,7 +146,6 @@ def main():
         state_adversaire = torch.tensor(observation_adversaire, dtype=torch.float32, device=device).unsqueeze(0)
 
         t=-1
-        loss_actor, loss_critic = 0, 0
         critic_sum, critic_expected_sum, hard_critic_sum = 0, 0, 0
         
         while True :
@@ -149,7 +156,7 @@ def main():
             if is_adv:
                 action_adv = select_action(state_adversaire, adv.actor.net, sample_action, device, 3*epsilon(steps_done))
             else:
-                action_adv = torch.tensor(sample_action(state_adversaire))
+                action_adv = torch.tensor(sample_action(state_adversaire)).to(device)
 
 
             observation_hero, observation_adversaire, terminated, info_supplementaires = env.step(action_hero, action_adv)
@@ -169,27 +176,37 @@ def main():
             state_hero = next_state_hero
             state_adversaire = next_state_adversaire
 
-            l_a = optimize_actor(memory, hero.actor.net, hero.critic.net, optimizer_actor, predictor_net, BATCH_SIZE)
-            l_c = optimize_critic(memory, hero.critic.net, hero.critic_smooth.net, optimizer_critic, gamma(steps_done), BATCH_SIZE)
+            if learning_circles==num_game_before_learning_game:
+                if len(memory) >= BATCH_SIZE:
+                    transitions = memory.sample(BATCH_SIZE)
+                    batch = Transition(*zip(*transitions))
+                    if l_loss_predictor[-1]>1*(1-random.rand()):
+                        loss_pred_dq.append(optimize_predictor(batch, predictor_net, optimizer_predictor).clone().detach().to('cpu'))
+                    elif abs(critic_value[-1]-critic_value_expected[-1])>1*(1-random.rand()):
+                        loss_pred_dq.append(optimize_predictor(batch, predictor_net, optimizer_predictor).clone().detach().to('cpu'))
+                        loss_critic_dq.append(optimize_critic(batch, hero.critic.net, hero.critic_smooth.net, optimizer_critic, gamma(steps_done)).clone().detach().to('cpu'))
+                    else:
+                        loss_pred_dq.append(optimize_predictor(batch, predictor_net, optimizer_predictor).clone().detach().to('cpu'))
+                        loss_critic_dq.append(optimize_critic(batch, hero.critic.net, hero.critic_smooth.net, optimizer_critic, gamma(steps_done)).clone().detach().to('cpu'))
+                        loss_actor_dq.append(optimize_actor(batch, hero.actor.net, hero.critic.net, optimizer_actor, predictor_net).clone().detach().to('cpu'))
+
             soft_update(hero.critic.net, hero.critic_smooth.net)
-            
-            loss_actor+=l_a
-            loss_critic+=l_c
             
 
             if terminated:
-                loss_pred_sum=0
-                for _ in range(5):
-                    loss_pred_sum+=optimize_predictor(memory, predictor_net, optimizer_predictor, BATCH_SIZE=512)
-                loss_actor = float(torch.tensor(loss_actor).to('cpu'))
-                loss_critic = float(torch.tensor(loss_critic).to('cpu'))
-
-
-                norm_loss_critic = min(.2, loss_critic/(1e-4-loss_actor))
-                norm_loss_actor=(loss_actor/(t+1))*(1-gamma(steps_done))
+                if learning_circles<num_game_before_learning_game:
+                    learning_circles+=1
+                else: 
+                    learning_circles=0
                 
-                l_loss_actor.append(norm_loss_actor) # Normalisée sur le fait que la loss de l'actor donc la q value va croitre avec la valeur de gamma ((1-gamma)^-1)
-                l_loss_critic.append(norm_loss_critic) # on normalise par rapport à la valeur des score qu'il modélise. 
+                avg_loss_actor = sum(loss_actor_dq)/len(loss_actor_dq)
+                avg_loss_critic = sum(loss_critic_dq)/len(loss_critic_dq)
+                temp = torch.tensor(loss_pred_dq)
+                avg_loss_predictor = sqrt(sum(temp*temp)/len(temp))
+                
+                l_loss_actor.append(avg_loss_actor) # Normalisée sur le fait que la loss de l'actor donc la q value va croitre avec la valeur de gamma ((1-gamma)^-1)
+                l_loss_critic.append(min(5, avg_loss_critic)) # on normalise par rapport à la valeur des score qu'il modélise. 
+                l_loss_predictor.append(min(5, avg_loss_predictor))
 
                 l_gamma.append(gamma(steps_done))
                 l_epsilon.append(epsilon(steps_done))
@@ -203,10 +220,10 @@ def main():
                 critic_value_expected.append(float(critic_expected_sum)/t)
                 hard_critic_value.append(float(hard_critic_sum)/t)
                 
-                l_loss_predictor.append(loss_pred_sum/t)
                 
                 torch.save(hero.actor.net.state_dict(), f'./models/actor/{hero.actor.version}/safetensor/{hero.actor.save_name}')
                 torch.save(hero.critic.net.state_dict(), f'./models/critic/{hero.critic.version}/safetensor/{hero.critic.save_name}')
+                torch.save(predictor_net.state_dict(), f'./models/predictor/{"version1"}/safetensor/test_cuda')
 
                 plot_infos(score_hero, score_adv, l_loss_actor, l_loss_critic, l_gamma, l_epsilon, eqm_critic_liste, critic_value, critic_value_expected, hard_critic_value, l_loss_predictor, l_max_loss_predictor)
 
@@ -214,6 +231,7 @@ def main():
 
 
     print('Complete')
-    plot_infos(score_hero, score_adv, l_loss_actor, l_loss_critic, l_gamma, l_epsilon, show_results=True)
+    plot_infos(score_hero, score_adv, l_loss_actor, l_loss_critic, l_gamma, l_epsilon, eqm_critic_liste, critic_value, critic_value_expected, hard_critic_value, l_loss_predictor, l_max_loss_predictor)
     plt.ioff()
     plt.show()
+    print(score_hero)

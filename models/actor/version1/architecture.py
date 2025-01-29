@@ -24,4 +24,8 @@ class Actor(nn.Module):
         for layer in self.hidden_layers:
             x = F.leaky_relu(layer(x))
 
-        return self.final_layer(x)
+        x = self.final_layer(x)
+        x_pow_shield = torch.cat((x[:, 2:5], x[:, 7:10]), dim=1)
+        x_pow_shield = F.sigmoid(x_pow_shield)
+        
+        return torch.cat((x[:, 0:2], x_pow_shield[:, 0:3],  x[:, 5:7], x_pow_shield[:, 3:6]), dim=1)

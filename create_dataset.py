@@ -49,14 +49,14 @@ def main(max_len_normal, max_len_impact, filename_normal="dataset_normal", filen
 
         while True :
             
-            action_hero = torch.tensor(sample_action(state_hero))
+            action_hero = torch.tensor(sample_action(state_hero)).to(device)
 
-            action_adv = torch.tensor(sample_action(state_adversaire))
+            action_adv = torch.tensor(sample_action(state_adversaire)).to(device)
 
 
             observation_hero, observation_adversaire, terminated, infos_supplementaires = env.step(action_hero, action_adv)
-            action_hero = action_hero.unsqueeze(0)
-            action_adv = action_adv.unsqueeze(0)
+            action_hero = action_hero.unsqueeze(0).to(device)
+            action_adv = action_adv.unsqueeze(0).to(device)
             
 
             next_state_hero = torch.tensor(observation_hero, dtype=torch.float32, device=device).unsqueeze(0)
@@ -80,8 +80,10 @@ def main(max_len_normal, max_len_impact, filename_normal="dataset_normal", filen
         if ep%200==0:
             save_dataset(memory, filename_normal)
             save_dataset(memory_impact, filename_impact)
+    save_dataset(memory, filename_normal)
+    save_dataset(memory_impact, filename_impact)
 
     print('Complete')
     
 if __name__=="__main__":
-    main(max_len_normal=100000, max_len_impact=5000)
+    main(max_len_normal=200000, max_len_impact=8000)

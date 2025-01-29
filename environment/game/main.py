@@ -140,7 +140,10 @@ class Etat_de_jeu:
             # distance du pod 2 à son cp
             distance += sqrt((self.memoire[-1][indice_pod_2][2] - self.carte_cp[indice_cp_2][0])**2 + (self.memoire[-1][indice_pod_2][3] - self.carte_cp[indice_cp_2][1])**2)
             # distance du pod 1 à son cp
-            distance -= sqrt((self.memoire[-1][indice_pod_1][2] - self.carte_cp[indice_cp_1][0])**2 + (self.memoire[-1][indice_pod_1][3] - self.carte_cp[indice_cp_1][1])**2)
+            if indice_cp_1> indice_cp_2:
+                distance -= sqrt((self.memoire[-1][indice_pod_1][2] - self.carte_cp[indice_cp_1][0])**2 + (self.memoire[-1][indice_pod_1][3] - self.carte_cp[indice_cp_1][1])**2)
+            else:
+                distance -= min(sqrt((self.memoire[-1][indice_pod_1][2] - self.carte_cp[indice_cp_1][0])**2 + (self.memoire[-1][indice_pod_1][3] - self.carte_cp[indice_cp_1][1])**2), self.get_distance_cp((indice_cp_1-1)%nombre_cp, (indice_cp_1)%nombre_cp))
             return distance/Facteur_compression_distances
         else:
             return - self.ecart_pods(indice_pod_2, indice_pod_1)

@@ -22,12 +22,7 @@ class ReplayMemory(object):
     def __len__(self):
         return len(self.memory)
 
-def optimize_predictor(memory, predictor_net, optimizer_predictor, BATCH_SIZE):
-    if len(memory) < BATCH_SIZE:
-        return 0
-    transitions = memory.sample(BATCH_SIZE)
-    batch = Transition(*zip(*transitions))
-
+def optimize_predictor(batch, predictor_net, optimizer_predictor):
     state_batch = torch.cat(batch.state)  
     action_J1_batch = torch.cat(batch.action_J1)
     action_J2_batch = torch.cat(batch.action_J2)
@@ -48,13 +43,7 @@ def optimize_predictor(memory, predictor_net, optimizer_predictor, BATCH_SIZE):
 
     return loss_predictor.clone().detach()
 
-def optimize_critic(memory, critic_net, critic_smooth_net, optimizer_critic, GAMMA = 0.95, BATCH_SIZE = 512):
-    if len(memory) < BATCH_SIZE:
-        return 0
-    
-    transitions = memory.sample(BATCH_SIZE)
-    batch = Transition(*zip(*transitions))
-
+def optimize_critic(batch, critic_net, critic_smooth_net, optimizer_critic, GAMMA = 0.95):
     state_batch = torch.cat(batch.state)
     next_state_batch = torch.cat(batch.next_state)
     next_state_hard_critic_batch = torch.cat(batch.state_hard_value)
@@ -73,12 +62,7 @@ def optimize_critic(memory, critic_net, critic_smooth_net, optimizer_critic, GAM
     return loss_critic.clone().detach()
 
 
-def optimize_actor(memory, actor_net, critic_net, optimizer_actor, predictor_net, BATCH_SIZE = 512):
-    if len(memory) < BATCH_SIZE:
-        return 0
-    transitions = memory.sample(BATCH_SIZE)
-    batch = Transition(*zip(*transitions))
-
+def optimize_actor(batch, actor_net, critic_net, optimizer_actor, predictor_net):
     state_batch = torch.cat(batch.state)
 
     action_j1 = actor_net(state_batch)

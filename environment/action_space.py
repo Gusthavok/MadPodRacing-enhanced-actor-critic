@@ -35,19 +35,22 @@ def sample_action(environnement):
     boost_d = rand()*.99 # boost  1/100
     
     # Direction puissance a
-    dir_x_a = next_cp_1[0]+(10000*rand()-5000)
-    dir_y_a = next_cp_1[1]+(10000*rand()-5000)
-    pow_a = 100*(1-rand()**3)
+    ecart_atq = 5000
+    dir_x_a = next_cp_1[0]+(2*ecart_atq*rand()-ecart_atq)
+    dir_y_a = next_cp_1[1]+(2*ecart_atq*rand()-ecart_atq)
+    pow_a = 100*rand()#100*(1-rand()**3)
     
 
     # Direction puissance d
+    
+    eacrt_def = 3000
     if rand()<.5:
-        dir_x_d = pod2a[0]+(6000*rand()-3000)
-        dir_y_d = pod2a[1]+(6000*rand()-3000)
+        dir_x_d = pod2a[0]+(2*eacrt_def*rand()-eacrt_def)
+        dir_y_d = pod2a[1]+(2*eacrt_def*rand()-eacrt_def)
         pow_d = 100*(1-rand()**3)
     else:
-        dir_x_d = next_next_cp_adv_2[0]+(6000*rand()-3000)
-        dir_y_d = next_next_cp_adv_2[1]+(6000*rand()-3000)
+        dir_x_d = next_next_cp_adv_2[0]+(2*eacrt_def*rand()-eacrt_def)
+        dir_y_d = next_next_cp_adv_2[1]+(2*eacrt_def*rand()-eacrt_def)
         pow_d = 100*(1-rand()**3)
     
     # pour 1 pod : x, y, pow, shield, boost

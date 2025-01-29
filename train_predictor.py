@@ -4,7 +4,7 @@ import torch.optim as optim
 
 import environment as env
 
-from training_utils.actor_critic import ReplayMemory, optimize_predictor
+from training_utils.actor_critic import ReplayMemory, optimize_predictor, Transition
 
 from environment.action_space import sample_action
 
@@ -16,10 +16,10 @@ def hard_critic(arg):
 def main(dataset_normal, dataset_impact, num_iteration_for_avg_loss = 100):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    predictor_net = Predictor()
+    predictor_net = Predictor().to(device)
     optimizer_predictor = optim.AdamW(predictor_net.parameters(), lr=1e-3, amsgrad=True)
     
-    predictor_save_name='test'
+    predictor_save_name='test_cuda'
 
     for ind in range(1000):
 
@@ -27,9 +27,13 @@ def main(dataset_normal, dataset_impact, num_iteration_for_avg_loss = 100):
         avg_loss_impact = 0
         num_train_sur_impact = 1e-6
         for i in range(num_iteration_for_avg_loss):
-            avg_loss += optimize_predictor(dataset_normal, predictor_net, optimizer_predictor, BATCH_SIZE=512)
+            transitions = dataset_normal.sample(512)
+            batch = Transition(*zip(*transitions))
+            avg_loss += optimize_predictor(batch, predictor_net, optimizer_predictor)
             if i%100==0 and ind>10:
-                avg_loss_impact += optimize_predictor(dataset_impact, predictor_net, optimizer_predictor, BATCH_SIZE=64)
+                transitions = dataset_impact.sample(64)
+                batch = Transition(*zip(*transitions))
+                avg_loss_impact += optimize_predictor(batch, predictor_net, optimizer_predictor)
                 num_train_sur_impact+=1
         
 
