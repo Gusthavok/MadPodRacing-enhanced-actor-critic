@@ -1,3 +1,4 @@
 *.pyc
 gen*
 venv/
+safetensor/

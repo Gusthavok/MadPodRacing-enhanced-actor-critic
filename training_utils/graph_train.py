@@ -6,11 +6,8 @@ is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
     from IPython import display
 
-import matplotlib.pyplot as plt
-
-
 def plot_on_6_diagrams(dict11, dict12, dict21, dict22, dict31, dict32, show_result=False):
-    # Crée une figure avec 2x2 subplots
+    # Crée une figure avec 3x2 subplots
     fig, axs = plt.subplots(3, 2, figsize=(12, 10))
     
     # Liste des dictionnaires et des sous-graphiques associés
@@ -18,12 +15,19 @@ def plot_on_6_diagrams(dict11, dict12, dict21, dict22, dict31, dict32, show_resu
              (dict21, axs[1, 0]), (dict22, axs[1, 1]),
              (dict31, axs[2, 0]), (dict32, axs[2, 1]),]
     
-    for d, ax in dicts:
+    for i, (d, ax) in enumerate(dicts):
         title = d.pop('titre')  # Récupère et retire le titre du dictionnaire
         with_mean = d.pop('with_mean', False)  # Vérifie si 'with_mean' est présent
         
         for key, value in d.items():
-            ax.plot(value, label=key)
+            # Si c'est le subplot en position (2, 0) (i.e. i == 4)
+            if i ==4 or i==5:  # dict31, position (2, 0)
+                # Applique une échelle symlog sur l'axe Y
+                ax.set_yscale('symlog', linthresh=5)  # linthresh définit la transition linéaire autour de 0
+                ax.plot(value, label=f"{key} (Symlog Scale Y)")
+            else:
+                ax.plot(value, label=key)
+
             # Si 'with_mean' est True et que la liste a plus de 100 items
             if with_mean and len(value) > 100:
                 # Calcul de la moyenne des 100 dernières valeurs
@@ -34,8 +38,11 @@ def plot_on_6_diagrams(dict11, dict12, dict21, dict22, dict31, dict32, show_resu
         ax.legend()              # Ajoute la légende
     
     plt.tight_layout()
-    plt.pause(0.02)  # pause a bit so that plots are updated
-    if is_ipython:
+    plt.savefig('./output/figure.png')
+    plt.close()
+    
+    
+    if False and is_ipython:
         if not show_result:
             display.display(plt.gcf())
             display.clear_output(wait=True)
