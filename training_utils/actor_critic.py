@@ -5,19 +5,23 @@ import random
 from collections import namedtuple, deque
 from math import exp
 
+import numpy as np
+
 Transition = namedtuple('Transition',
                         ('state', 'action_J1', 'action_J2', 'next_state', 'state_hard_value'))
 
 class ReplayMemory(object):
     def __init__(self, capacity):
         self.memory = deque([], maxlen=capacity)
+        self.weights = list(range(1, capacity+1))
 
     def push(self, *args):
         """Save a transition"""
         self.memory.append(Transition(*args))
 
     def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
+        weights = self.weights[:len(self.memory)]
+        return random.choices(self.memory, weights=weights, k=batch_size)
 
     def __len__(self):
         return len(self.memory)
@@ -76,7 +80,7 @@ def optimize_critic(batch, critic_net, critic_smooth_net, optimizer_critic, test
     return loss_critic.clone().detach()
 
 
-def optimize_actor(batch, actor_net, critic_net, optimizer_actor, predictor_net, test_dataset):
+def optimize_actor(batch, actor_net, critic_smooth_net, optimizer_actor, predictor_net, test_dataset):
     state_batch = torch.cat(batch.state)
     
     if test_dataset:
@@ -90,7 +94,7 @@ def optimize_actor(batch, actor_net, critic_net, optimizer_actor, predictor_net,
     
     # Compute loss
     next_state_evaluation = torch.cat((state_batch[:, :20], predictor_net(state_batch, action_j1, action_j2)), dim=1)
-    q_value = critic_net(next_state_evaluation)
+    q_value = critic_smooth_net(next_state_evaluation)
     loss_actor = -q_value.mean()
 
     if not test_dataset:

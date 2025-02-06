@@ -147,7 +147,7 @@ class Etat_de_jeu:
             
             if True or indice_cp_1> indice_cp_2:
                 distance -= sqrt((self.memoire[-1][indice_pod_1][2] - self.carte_cp[indice_cp_1][0])**2 + (self.memoire[-1][indice_pod_1][3] - self.carte_cp[indice_cp_1][1])**2)
-                distance -= 1000
+                distance -= 300
             else:
                 distance -= min(sqrt((self.memoire[-1][indice_pod_1][2] - self.carte_cp[indice_cp_1][0])**2 + (self.memoire[-1][indice_pod_1][3] - self.carte_cp[indice_cp_1][1])**2), self.get_distance_cp((indice_cp_1-1)%nombre_cp, (indice_cp_1)%nombre_cp))
             return distance/Facteur_compression_distances

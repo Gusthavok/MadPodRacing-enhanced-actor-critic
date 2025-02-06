@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from numpy import exp, sqrt, random
+from numpy import exp, sqrt, random, average
 
 import torch
 import torch.optim as optim
@@ -97,20 +97,20 @@ class ModelTraining:
 def train_models(memory: ReplayMemory, model_training:ModelTraining, loss_pred_dq: list, loss_critic_dq: list, loss_actor_dq: list, steps_done: int, last_loss_predictor:float, last_loss_critic:float, test_dataset: bool):
 
     
-    if len(memory) >= BATCH_SIZE:
+    if len(memory) >= 10*BATCH_SIZE:
         transitions = memory.sample(BATCH_SIZE)
         batch = Transition(*zip(*transitions))
         
         loss_pred_dq.append(optimize_predictor(batch, model_training.predictor_net, model_training.optimizer_predictor, test_dataset=test_dataset).clone().detach().to('cpu'))
         loss_critic_dq.append(optimize_critic(batch, model_training.hero.critic.net, model_training.hero.critic_smooth.net, model_training.optimizer_critic, test_dataset=test_dataset, GAMMA=gamma(steps_done)).clone().detach().to('cpu'))
 
-        if last_loss_predictor<=1*(1-random.rand()) and last_loss_critic<=5*(1-random.rand()):
-            loss_actor_dq.append(optimize_actor(batch, model_training.hero.actor.net, model_training.hero.critic.net, model_training.optimizer_actor, model_training.predictor_net, test_dataset=test_dataset).clone().detach().to('cpu'))
+        if last_loss_predictor<=1*(1-random.rand()) and last_loss_critic<=20*(1-random.rand()):
+            loss_actor_dq.append(optimize_actor(batch, model_training.hero.actor.net, model_training.hero.critic_smooth.net, model_training.optimizer_actor, model_training.predictor_net, test_dataset=test_dataset).clone().detach().to('cpu'))
             
-            for _ in range(3): 
-                transitions = memory.sample(BATCH_SIZE)
-                batch = Transition(*zip(*transitions))
-                loss_actor_dq.append(optimize_actor(batch, model_training.hero.actor.net, model_training.hero.critic.net, model_training.optimizer_actor, model_training.predictor_net, test_dataset=test_dataset).clone().detach().to('cpu'))
+            # for _ in range(3): 
+            #     transitions = memory.sample(BATCH_SIZE)
+            #     batch = Transition(*zip(*transitions))
+            #     loss_actor_dq.append(optimize_actor(batch, model_training.hero.actor.net, model_training.hero.critic_smooth.net, model_training.optimizer_actor, model_training.predictor_net, test_dataset=test_dataset).clone().detach().to('cpu'))
 
 
 def update_losses_values(l_loss_actor, l_loss_critic, l_loss_predictor, loss_actor_dq, loss_critic_dq, loss_pred_dq):
@@ -120,7 +120,7 @@ def update_losses_values(l_loss_actor, l_loss_critic, l_loss_predictor, loss_act
     # temp = torch.tensor(loss_pred_dq)
     # avg_loss_predictor = sqrt(sum(temp*temp)/len(temp))
     
-    l_loss_actor.append(max(-100, avg_loss_actor))
+    l_loss_actor.append(min(500, max(-500, avg_loss_actor)))
     l_loss_critic.append(avg_loss_critic)
     l_loss_predictor.append( avg_loss_predictor)
 
@@ -131,33 +131,36 @@ def main():
 
     hero_actor_classe = Actor
     hero_actor_model_version = 'version1'
-    hero_actor_save_name = 'gen_0_transformer'
-    hero_actor_reload_name = 'gen_0_transformer'
+    hero_actor_save_name = 'gen_1_working_new_learning'
+    hero_actor_reload_name = 'gen_1_working'
 
     hero_critic_classe = Critic
     hero_critic_model_version = 'version1'
-    hero_critic_save_name = 'gen_0_transformer'
-    hero_critic_reload_name = 'gen_0_transformer'
+    hero_critic_save_name = 'gen_1_working_new_learning'
+    hero_critic_reload_name = 'gen_1_working'
     
     actor = Model(hero_actor_model_version, hero_actor_classe, hero_actor_save_name, hero_actor_reload_name, 'actor', device)
     critic = Model(hero_critic_model_version, hero_critic_classe, hero_critic_save_name, hero_critic_reload_name, 'critic', device) 
     critic_smooth = Model(hero_critic_model_version, hero_critic_classe, hero_critic_save_name, hero_critic_reload_name, 'critic', device)   
 
     predictor_net = Predictor().to(device)
-    predictor_net.load_state_dict(torch.load('./models/predictor/version1/safetensor/test_cuda_normal', map_location=device))
+    predictor_net.load_state_dict(torch.load('./models/predictor/version1/safetensor/gen_0_working', map_location=device))
 
     hero = Joueur(actor, critic, critic_smooth, eval_mode = False)
 
-    is_adv=False
-    adv = Joueur(actor, critic, critic_smooth, eval_mode = False)
+    is_adv=True
+    actor_adv = Model(hero_actor_model_version, hero_actor_classe, hero_actor_save_name, hero_actor_reload_name, 'actor', device)
+    critic_adv = Model(hero_critic_model_version, hero_critic_classe, hero_critic_save_name, hero_critic_reload_name, 'critic', device) 
+    critic_smooth_adv = Model(hero_critic_model_version, hero_critic_classe, hero_critic_save_name, hero_critic_reload_name, 'critic', device)   
+    adv = Joueur(actor_adv, critic_adv, critic_smooth_adv, eval_mode = True)
 
     optimizer_actor = optim.AdamW(hero.actor.net.parameters(), lr=LR_ACTOR, amsgrad=True)
     optimizer_critic = optim.AdamW(hero.critic.net.parameters(), lr=LR_CRITIC, amsgrad=True)
     optimizer_predictor = optim.AdamW(predictor_net.parameters(), lr=3e-5, amsgrad=True)
     
-    num_item_in_memory = 300*30
+    num_item_in_memory = 200*300
     memory = ReplayMemory(num_item_in_memory)
-    memory_test = ReplayMemory(num_item_in_memory//5)
+    memory_test = ReplayMemory(num_item_in_memory)
     proba_test_set = .2 #20% des observations d'une game vont dans le test set. 
     
     model_training = ModelTraining(hero=hero, predictor_net=predictor_net, optimizer_predictor=optimizer_predictor, optimizer_critic=optimizer_critic, optimizer_actor=optimizer_actor)
@@ -183,7 +186,7 @@ def main():
     hard_critic_value = []
     l_max_loss_predictor = []
 
-    rate_training = .05
+    rate_training = .4
     memory_size_for_losses = int(300*rate_training)
     loss_actor_dq, loss_critic_dq, loss_pred_dq= deque([0], maxlen=memory_size_for_losses), deque([0], maxlen=memory_size_for_losses), deque([0], maxlen=memory_size_for_losses)
     loss_pred_test_dq, loss_critic_test_dq, loss_actor_test_dq = deque([0], maxlen=memory_size_for_losses), deque([0], maxlen=memory_size_for_losses), deque([0], maxlen=memory_size_for_losses)
@@ -206,7 +209,7 @@ def main():
 
             action_hero = select_action(state_hero, hero.actor.net, sample_action, device, epsilon(steps_done))
             if is_adv:
-                action_adv = select_action(state_adversaire, adv.actor.net, sample_action, device, 3*epsilon(steps_done))
+                action_adv = select_action(state_adversaire, adv.actor.net, sample_action, device, 0)
             else:
                 action_adv = torch.tensor(sample_action(state_adversaire)).to(device)
 
@@ -242,8 +245,8 @@ def main():
                              loss_critic_dq=loss_critic_dq, 
                              loss_actor_dq=loss_actor_dq, 
                              steps_done=steps_done, 
-                             last_loss_predictor=l_loss_predictor[-1], 
-                             last_loss_critic=l_loss_critic[-1], 
+                             last_loss_predictor=average(loss_pred_dq),
+                             last_loss_critic=average(loss_critic_dq), 
                              test_dataset=False)
                 train_models(memory=memory_test, 
                              model_training=model_training, 
@@ -251,8 +254,8 @@ def main():
                              loss_critic_dq=loss_critic_test_dq, 
                              loss_actor_dq=loss_actor_test_dq, 
                              steps_done=steps_done, 
-                             last_loss_predictor=l_loss_predictor[-1], 
-                             last_loss_critic=l_loss_critic[-1], 
+                             last_loss_predictor=average(loss_pred_dq),
+                             last_loss_critic=average(loss_critic_dq), 
                              test_dataset=True)
             soft_update(hero.critic.net, hero.critic_smooth.net)
             
@@ -284,7 +287,7 @@ def main():
                 
                 torch.save(hero.actor.net.state_dict(), f'./models/actor/{hero.actor.version}/safetensor/{hero.actor.save_name}')
                 torch.save(hero.critic.net.state_dict(), f'./models/critic/{hero.critic.version}/safetensor/{hero.critic.save_name}')
-                torch.save(predictor_net.state_dict(), f'./models/predictor/{"version1"}/safetensor/test_cuda_normal')
+                torch.save(predictor_net.state_dict(), f'./models/predictor/{"version1"}/safetensor/gen_1_working')
 
                 plot_infos(score_hero, score_adv, l_loss_actor, l_loss_critic, l_gamma, l_epsilon, eqm_critic_liste, critic_value, critic_value_expected, hard_critic_value, l_loss_predictor, l_max_loss_predictor, l_loss_actor_test, l_loss_critic_test, l_loss_predictor_test)
 

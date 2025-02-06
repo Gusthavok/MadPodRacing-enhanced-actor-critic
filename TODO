@@ -1,4 +1,5 @@
 rajouter des memory tests_set qui permettent de déterminer l'overfit. (-> Base des prochains choix de quel model train)
+pour déterminer le reéentrainement, tester la critique et le predictor sur la dernière run et calculer une loss. Si loss élevée, run des games gratuites pour effacer les pbs
 
 
 Predictor : 

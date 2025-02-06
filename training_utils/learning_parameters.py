@@ -7,24 +7,23 @@
 # LR is the learning rate of the ``AdamW`` optimizer
 
 # defenseur :
-BATCH_SIZE = 512
+BATCH_SIZE = 2048
 
 # Fonction Q = Score(t) + Q(t-1)
-GAMMA_START = 0.5
-GAMMA_END = 0.9
-GAMMA_OFFSET = 60000
-GAMMA_TEMPS = 480000 # Au bout de n+GAMMA_OFFSET événements, on serra a GAMMA_START + (GAMMA_END - GAMMA_START)*(n/GAMMA_TEMPS)
+GAMMA_START = 0.7
+GAMMA_END = 0.95
+GAMMA_OFFSET = 0
+GAMMA_TEMPS = 240000 # Au bout de n+GAMMA_OFFSET événements, on serra a GAMMA_START + (GAMMA_END - GAMMA_START)*(n/GAMMA_TEMPS)
 
 # Fréquence des actions aléatoires
 EPS_START = 0.5
-EPS_END = 0.1
-EPS_OFFSET = 60000
-EPS_DECAY = 300000
+EPS_END = 0.05
+EPS_OFFSET = 0
+EPS_DECAY = 150000
 
 # Taux pour la soft actualisation (stabilise le modèle)
-TAU = 0.02
+TAU = 0.005
 
 # Learning rates
-LR_ACTOR = 1e-6
-LR_CRITIC = 3e-6
-
+LR_ACTOR = 1e-5
+LR_CRITIC = 1e-5

@@ -1,5 +1,5 @@
 # MadPodRacing-enhanced-actor-critic
-Considering the convergence (speed and optimality) faced during the usage of the actor critic method, I enhanced the method for better performances.
+Considering the convergence problems (speed and optimality) faced during the usage of the actor critic method, I tried something else. (Not working better)
 
 The idea is to add a ![predictor bloc](model-structure.png) in the actor-critic model. Thid predictor bloc will be trained for a long time on random exemple of the game and random actions. While the actors and critics version can evolve, the predictor will always remain the same. 
 
